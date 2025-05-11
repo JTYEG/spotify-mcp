@@ -1,7 +1,7 @@
 import type { MaxInt } from '@spotify/web-api-ts-sdk';
 import { z } from 'zod';
 import type { SpotifyHandlerExtra, SpotifyTrack, tool } from './types.js';
-import { formatDuration, handleSpotifyRequest, percent } from './utils.js';
+import { formatDuration, handleSpotifyRequest } from './utils.js';
 
 function isTrack(item: any): item is SpotifyTrack {
   return (
@@ -356,60 +356,142 @@ const getRecentlyPlayed: tool<{
   },
 };
 
-const getTrackAudioFeatures: tool<{ trackId: z.ZodString }> = {
-  name: 'getTrackAudioFeatures',
-  description:
-    'Return Audio Features (tempo, key, danceability, vocals, energy, acousticness, instrumentalness, speechiness, liveness, valence) for one track',
-  schema: { trackId: z.string().describe('Spotify track ID') },
-  handler: async ({ trackId }, _extra: SpotifyHandlerExtra) => {
-    const f = await handleSpotifyRequest((sp) =>
-      sp.tracks.audioFeatures(trackId),
-    );
-    if (!f) {
-      return { content: [{ type: 'text', text: 'No audio-features found' }] };
+const getFollowedArtists: tool<{
+  after: z.ZodOptional<z.ZodString>;
+  limit: z.ZodOptional<z.ZodNumber>;
+}> = {
+  name: 'getFollowedArtists',
+  description: 'Get a list of artists the user is following on Spotify',
+  schema: {
+    after: z
+      .string()
+      .optional()
+      .describe(
+        'The last artist ID from the previous request. Cursor for pagination.',
+      ),
+    limit: z
+      .number()
+      .min(1)
+      .max(50)
+      .optional()
+      .describe('Maximum number of artists to return (1-50)'),
+  },
+  handler: async (args, extra: SpotifyHandlerExtra) => {
+    const { limit = 50, after } = args;
+
+    const artists = await handleSpotifyRequest(async (spotifyApi) => {
+      return await spotifyApi.currentUser.followedArtists(
+        after,
+        limit as MaxInt<50>,
+      );
+    });
+
+    if (artists.artists.items.length === 0) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: "User doesn't follow any artists on Spotify",
+          },
+        ],
+      };
     }
 
-    const lines = [
-      `Tempo: ${f.tempo} BPM`,
-      `Key: ${f.key} (${f.mode === 1 ? 'major' : 'minor'})`,
-      `Time Sig.: ${f.time_signature}/4`,
-      `Loudness: ${f.loudness} dB`,
-      `Danceability: ${percent(f.danceability)}`,
-      `Energy: ${percent(f.energy)}`,
-      `Acousticness: ${percent(f.acousticness)}`,
-      `Instrumentalness: ${percent(f.instrumentalness)}`,
-      `Speechiness: ${percent(f.speechiness)}`,
-      `Liveness: ${percent(f.liveness)}`,
-      `Valence: ${percent(f.valence)}`,
-    ].join('\n');
+    const formattedArtists = artists.artists.items
+      .map((artist, i) => {
+        return `${i + 1}. "${artist.name}" - ID: ${artist.id}`;
+      })
+      .join('\n');
 
-    return { content: [{ type: 'text', text: `# Audio Features\n${lines}` }] };
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `# Artists You Follow\n\n${formattedArtists}`,
+        },
+      ],
+    };
   },
 };
 
-const getTrackAudioAnalysis: tool<{ trackId: z.ZodString }> = {
-  name: 'getTrackAudioAnalysis',
-  description:
-    'Return track-level audio analysis: tempo, duration, loudness, key, mode',
-  schema: { trackId: z.string().describe('Spotify track ID') },
-  handler: async ({ trackId }, _extra: SpotifyHandlerExtra) => {
-    const a = await handleSpotifyRequest((sp) =>
-      sp.tracks.audioAnalysis(trackId),
-    );
-    if (!a || !a.track) {
-      return { content: [{ type: 'text', text: 'No audio-analysis found' }] };
+const getUserTopItems: tool<{
+  type: z.ZodString;
+  time_range: z.ZodString;
+  limit: z.ZodOptional<z.ZodNumber>;
+  offset: z.ZodOptional<z.ZodNumber>;
+}> = {
+  name: 'getUserTopItems',
+  description: "Get a list of the user's top artists or tracks",
+  schema: {
+    type: z
+      .string()
+      .describe(
+        'The type of items to get top for. Must be "artists" or "tracks"',
+      ),
+    time_range: z
+      .string()
+      .describe(
+        'The time range for the top items. Must be "short_term", "medium_term", or "long_term"',
+      ),
+    limit: z
+      .number()
+      .min(1)
+      .max(50)
+      .optional()
+      .describe('Maximum number of items to return (1-50)'),
+    offset: z
+      .number()
+      .optional()
+      .describe('The index of the first item to return. Defaults to 0.'),
+  },
+  handler: async (args, extra: SpotifyHandlerExtra) => {
+    const { type, time_range, limit = 50 } = args;
+
+    const topItems = await handleSpotifyRequest(async (spotifyApi) => {
+      return await spotifyApi.currentUser.topItems(
+        type as 'artists' | 'tracks',
+        time_range as 'short_term' | 'medium_term' | 'long_term',
+        limit as MaxInt<50>,
+      );
+    });
+
+    if (topItems.items.length === 0) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `User doesn't have any top ${type} on Spotify`,
+          },
+        ],
+      };
     }
 
-    const { tempo, duration, loudness, key, mode } = a.track;
-    const lines = [
-      `Tempo: ${tempo} BPM`,
-      `Duration: ${duration} seconds`,
-      `Loudness: ${loudness} dB`,
-      `Key: ${key} (${mode === 1 ? 'major' : 'minor'})`,
-      `Mode: ${mode}`
-    ].join('\n');
+    const formattedItems = topItems.items
+      .map((item, i) => {
+        if (type === 'artists') {
+          return `${i + 1}. "${item.name}" - ID: ${item.id}`;
+        } else if (
+          type === 'tracks' &&
+          'artists' in item &&
+          Array.isArray(item.artists)
+        ) {
+          const artists = item.artists.map((a) => a.name).join(', ');
+          return `${i + 1}. "${item.name}" by ${artists} - ID: ${item.id}`;
+        } else {
+          // fallback for type safety
+          return `${i + 1}. "${item.name}" - ID: ${item.id}`;
+        }
+      })
+      .join('\n');
 
-    return { content: [{ type: 'text', text: `# Track Audio Analysis\n${lines}` }] };
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `# Top ${type}\n\n${formattedItems}`,
+        },
+      ],
+    };
   },
 };
 
@@ -420,6 +502,6 @@ export const readTools = [
   getMyPlaylists,
   getPlaylistTracks,
   getRecentlyPlayed,
-  getTrackAudioFeatures, // Attention to deprecation flag https://developer.spotify.com/documentation/web-api/reference/get-audio-features
-  getTrackAudioAnalysis, // Attention to deprecation flag https://developer.spotify.com/documentation/web-api/reference/get-audio-analysis
+  getFollowedArtists,
+  getUserTopItems,
 ];

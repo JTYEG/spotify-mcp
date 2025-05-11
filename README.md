@@ -34,8 +34,9 @@ To comply with Spotify’s Developer Terms, you must have a Spotify Premium acco
 ## Example Interactions
 
 - _"Play The Beatles less known bootlegs"_
-- _"Create a Taylor Swift / Slipknot fusion playlist"_
-- _"Copy all the techno tracks from my workout playlist to my work playlist"_
+- _"Make a fusion playlist of The Beatles and Metallica"_
+- _"What are the audio features of the track 'Bohemian Rhapsody' by Queen?"_
+- _"Create my marathon playlist and add tracks from my workout playlists"_
 
 ## Tools
 
@@ -93,6 +94,28 @@ To comply with Spotify’s Developer Terms, you must have a Spotify Premium acco
      - `limit` (number, optional): A number specifying the maximum number of tracks to return.
    - **Returns**: If tracks are found it returns a formatted list of recently played tracks else a message stating: "You don't have any recently played tracks on Spotify".
    - **Example**: `getRecentlyPlayed({ limit: 10 })`
+
+7. **getFollowedArtists**
+
+   - **Description**: Retrieves a list of artists the user is following on Spotify.
+   - **Parameters**:
+     - `after` (string, optional): The last artist ID from the previous request. Cursor for pagination.
+     - `limit` (number, optional): Maximum number of artists to return (1-50).
+   - **Returns**: If artists are found it returns a formatted list of followed artists else a message stating: "You don't follow any artists on Spotify".
+   - **Example**: `getFollowedArtists({ limit: 10 })`
+
+8. **getUserTopItems**
+
+   - **Description**: Retrieves a list of the user's top artists or tracks.
+   - **Parameters**:
+     - `type` (string): The type of items to get top for. Must be "artists" or "tracks".
+     - `time_range` (string): The time range for the top items. Must be "short_term", "medium_term", or "long_term".
+     - `limit` (number, optional): Maximum number of items to return (1-50).
+     - `offset` (number, optional): Index of the first item to return. Defaults to 0.
+   - **Returns**: If items are found it returns a formatted list of top items else a message stating: "You don't have any top items on Spotify".
+   - **Example**: `getUserTopItems({ type: "artists", time_range: "short_term", limit: 10 })`
+
+
 
 </details>
 
@@ -318,4 +341,4 @@ You can add additional tools to the auto approval array to run the tools without
 
 This project was inspired by [spotify-mcp-server](https://github.com/marcelmarais/spotify-mcp-server) by Marcel Marais. Main modifications:
 1. The authentication process was refactored to use the Spotify API’s PKCE extension, eliminating the need for local client secret storage and repeated re-authentication.
-2. Added tools for track audio feature and audio analysis. These tools are marked as deprecated in the Spotify API, but they are still useful.
+2. Added new tools to understand user's taste.

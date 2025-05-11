@@ -174,20 +174,20 @@ export async function authorizeSpotify(): Promise<void> {
   const codeChallenge = await generateCodeChallenge(codeVerifier);
 
   const scopes = [
-    'user-read-private',
-    'user-read-email',
-    'user-read-playback-state',
-    'user-modify-playback-state',
-    'user-read-currently-playing',
-    'playlist-read-private',
     'playlist-modify-private',
     'playlist-modify-public',
-    'user-library-read',
+    'playlist-read-private',
+    'user-follow-read',
     'user-library-modify',
-    'user-read-recently-played',
+    'user-library-read',
     'user-modify-playback-state',
-    'user-read-playback-state',
+    'user-modify-playback-state',
     'user-read-currently-playing',
+    'user-read-email',
+    'user-read-playback-state',
+    'user-read-private',
+    'user-read-recently-played',
+    'user-top-read',
   ];
 
   const authParams = new URLSearchParams({
