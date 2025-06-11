@@ -2,8 +2,8 @@
   "type": "module",
   "author": "Igor Garbuz",
   "name": "spotify-mcp",
-  "version": "1.1.0",
-  "description": "A Model Context Protocol Node server for Spotify API",
+  "version": "1.2.0",
+  "description": "Model Context Protocol local Node server for Spotify API",
   "main": "index.js",
   "bin": {
     "spotify-mcp": "./build/index.js"
@@ -15,10 +15,10 @@
   },
   "files": ["build"],
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.11.0",
+    "@modelcontextprotocol/sdk": "^1.12.1",
     "@spotify/web-api-ts-sdk": "^1.2.0",
     "open": "^10.1.2",
-    "zod": "^3.24.4"
+    "zod": "^3.25.61"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

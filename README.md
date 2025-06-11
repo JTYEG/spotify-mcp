@@ -60,14 +60,14 @@ To comply with Spotify’s Developer Terms, you must have a Spotify Premium acco
    - **Returns**: Object containing track name, artist, album, playback progress, duration, and playback state
    - **Example**: `getNowPlaying()`
 
-3. **getMyPlaylists**
+3. **getUserPlaylists**
 
    - **Description**: Get a list of the current user's playlists on Spotify
    - **Parameters**:
      - `limit` (number, optional): Maximum number of playlists to return (default: 20)
      - `offset` (number, optional): Index of the first playlist to return (default: 0)
    - **Returns**: Array of playlists with their IDs, names, track counts, and public status
-   - **Example**: `getMyPlaylists(10, 0)`
+   - **Example**: `getUserPlaylists(10, 0)`
 
 4. **getPlaylistTracks**
 

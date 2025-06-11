@@ -17,7 +17,7 @@ export interface SpotifyConfig {
   accessTokenExpiresAt?: number; // unix ms timestamp
 }
 
-export function loadSpotifyConfig(): SpotifyConfig {
+function loadSpotifyConfig(): SpotifyConfig {
   if (!fs.existsSync(CONFIG_FILE)) {
     throw new Error(
       `Spotify configuration file not found at ${CONFIG_FILE}. Please create one with clientId and redirectUri.`,
@@ -45,13 +45,13 @@ export function loadSpotifyConfig(): SpotifyConfig {
   }
 }
 
-export function saveSpotifyConfig(config: SpotifyConfig): void {
+function saveSpotifyConfig(config: SpotifyConfig): void {
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
 }
 
 let cachedSpotifyApi: SpotifyApi | null = null;
 
-export function createSpotifyApi(): SpotifyApi {
+function createSpotifyApi(): SpotifyApi {
   if (cachedSpotifyApi) {
     return cachedSpotifyApi;
   }
@@ -91,7 +91,7 @@ function generateRandomString(length: number): string {
 /**
  * Generates a PKCE code verifier (43-128 chars, high entropy)
  */
-export function generateCodeVerifier(length = 128): string {
+function generateCodeVerifier(length = 128): string {
   // RFC 7636: code verifier must be between 43 and 128 chars
   return generateRandomString(length);
 }
@@ -180,7 +180,6 @@ export async function authorizeSpotify(): Promise<void> {
     'user-follow-read',
     'user-library-modify',
     'user-library-read',
-    'user-modify-playback-state',
     'user-modify-playback-state',
     'user-read-currently-playing',
     'user-read-email',
@@ -307,6 +306,45 @@ export async function authorizeSpotify(): Promise<void> {
   await authPromise;
 }
 
+/**
+ * Refresh the access token using the refresh token (PKCE flow)
+ */
+async function refreshAccessToken(
+  config: SpotifyConfig,
+): Promise<SpotifyConfig> {
+  if (!config.refreshToken) throw new Error('No refresh token available');
+  const tokenUrl = 'https://accounts.spotify.com/api/token';
+  const params = new URLSearchParams();
+  params.append('grant_type', 'refresh_token');
+  params.append('refresh_token', config.refreshToken);
+  params.append('client_id', config.clientId);
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  };
+
+  const response = await fetch(tokenUrl, {
+    method: 'POST',
+    headers,
+    body: params,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.text();
+    throw new Error(`Failed to refresh access token: ${errorData}`);
+  }
+
+  const data = await response.json();
+  config.accessToken = data.access_token;
+  // Spotify may or may not return a new refresh token
+  if (data.refresh_token) config.refreshToken = data.refresh_token;
+  // Set new expiry (1 hour from now)
+  config.accessTokenExpiresAt =
+    Date.now() + (data.expires_in ? data.expires_in * 1000 : 3600 * 1000);
+  saveSpotifyConfig(config);
+  return config;
+}
+
 export function formatDuration(ms: number): string {
   const minutes = Math.floor(ms / 60000);
   const seconds = ((ms % 60000) / 1000).toFixed(0);
@@ -348,47 +386,4 @@ export async function handleSpotifyRequest<T>(
     // Rethrow other errors
     throw error;
   }
-}
-
-/**
- * Refresh the access token using the refresh token (PKCE flow)
- */
-export async function refreshAccessToken(
-  config: SpotifyConfig,
-): Promise<SpotifyConfig> {
-  if (!config.refreshToken) throw new Error('No refresh token available');
-  const tokenUrl = 'https://accounts.spotify.com/api/token';
-  const params = new URLSearchParams();
-  params.append('grant_type', 'refresh_token');
-  params.append('refresh_token', config.refreshToken);
-  params.append('client_id', config.clientId);
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/x-www-form-urlencoded',
-  };
-
-  const response = await fetch(tokenUrl, {
-    method: 'POST',
-    headers,
-    body: params,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.text();
-    throw new Error(`Failed to refresh access token: ${errorData}`);
-  }
-
-  const data = await response.json();
-  config.accessToken = data.access_token;
-  // Spotify may or may not return a new refresh token
-  if (data.refresh_token) config.refreshToken = data.refresh_token;
-  // Set new expiry (1 hour from now)
-  config.accessTokenExpiresAt =
-    Date.now() + (data.expires_in ? data.expires_in * 1000 : 3600 * 1000);
-  saveSpotifyConfig(config);
-  return config;
-}
-
-export function percent(v: number) {
-  return `${(v * 100).toFixed(1)} %`;
 }

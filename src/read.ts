@@ -15,24 +15,36 @@ function isTrack(item: any): item is SpotifyTrack {
 
 const searchSpotify: tool<{
   query: z.ZodString;
-  type: z.ZodEnum<['track', 'album', 'artist', 'playlist']>;
+  type: z.ZodEnum<['track', 'album', 'playlist']>;
   limit: z.ZodOptional<z.ZodNumber>;
 }> = {
   name: 'searchSpotify',
-  description: 'Search for tracks, albums, artists, or playlists on Spotify',
+  description:
+    'Search Spotify by keyword and field filters (e.g. artist, track, playlist, tag:new, tag:hipster) and return items of the given type',
   schema: {
-    query: z.string().describe('The search query'),
-    type: z
-      .enum(['track', 'album', 'artist', 'playlist'])
+    query: z
+      .string()
       .describe(
-        'The type of item to search for either track, album, artist, or playlist',
+        [
+          'Full Spotify search string combining:',
+          '- free-text keywords (e.g. “remaster”),',
+          '- field filters: artist:<name>, track:<name>, album:<name>,',
+          '  year:<YYYY> or <YYYY-YYYY>, genre:<name>.',
+          'The album, artist and year filters can be used for album and track types.',
+          'The genre filter can only be used for track type.',
+          'Special filter tag:hipster (bottom 10% popularity) can be used with track and album types.',
+          'All separated by spaces. Example: "tag:hipster artist:Queen remaster".',
+        ].join(' '),
       ),
+    type: z
+      .enum(['track', 'album', 'playlist'])
+      .describe('Which item type to return: track, album or playlist'),
     limit: z
       .number()
       .min(1)
       .max(50)
       .optional()
-      .describe('Maximum number of results to return (10-50)'),
+      .describe('Max number of results to return (1–50)'),
   },
   handler: async (args, extra: SpotifyHandlerExtra) => {
     const { query, type, limit } = args;
@@ -65,12 +77,6 @@ const searchSpotify: tool<{
           .map((album, i) => {
             const artists = album.artists.map((a) => a.name).join(', ');
             return `${i + 1}. "${album.name}" by ${artists} - ID: ${album.id}`;
-          })
-          .join('\n');
-      } else if (type === 'artist' && results.artists) {
-        formattedResults = results.artists.items
-          .map((artist, i) => {
-            return `${i + 1}. ${artist.name} - ID: ${artist.id}`;
           })
           .join('\n');
       } else if (type === 'playlist' && results.playlists) {
@@ -180,10 +186,10 @@ const getNowPlaying: tool<Record<string, never>> = {
   },
 };
 
-const getMyPlaylists: tool<{
+const getUserPlaylists: tool<{
   limit: z.ZodOptional<z.ZodNumber>;
 }> = {
-  name: 'getMyPlaylists',
+  name: 'getUserPlaylists',
   description: "Get a list of the current user's playlists on Spotify",
   schema: {
     limit: z
@@ -499,7 +505,7 @@ const getUserTopItems: tool<{
 export const readTools = [
   searchSpotify,
   getNowPlaying,
-  getMyPlaylists,
+  getUserPlaylists,
   getPlaylistTracks,
   getRecentlyPlayed,
   getFollowedArtists,
