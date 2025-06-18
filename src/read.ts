@@ -17,6 +17,7 @@ const searchSpotify: tool<{
   query: z.ZodString;
   type: z.ZodEnum<['track', 'album', 'playlist']>;
   limit: z.ZodOptional<z.ZodNumber>;
+  offset: z.ZodOptional<z.ZodNumber>;
 }> = {
   name: 'searchSpotify',
   description:
@@ -44,11 +45,20 @@ const searchSpotify: tool<{
       .min(1)
       .max(50)
       .optional()
-      .describe('Max number of results to return (1–50)'),
+      .describe('Max number of results to return (1-50)'),
+    offset: z
+      .number()
+      .min(0)
+      .max(1000)
+      .optional()
+      .describe(
+        'The index of the first result to return. Use with limit to get the next page of search results (0-1000)',
+      ),
   },
   handler: async (args, extra: SpotifyHandlerExtra) => {
-    const { query, type, limit } = args;
-    const limitValue = limit ?? 10;
+    const { query, type, limit, offset } = args;
+    const limitValue = limit ?? 20;
+    const offsetValue = offset ?? 0;
 
     try {
       const results = await handleSpotifyRequest(async (spotifyApi) => {
@@ -57,6 +67,7 @@ const searchSpotify: tool<{
           [type],
           undefined,
           limitValue as MaxInt<50>,
+          offsetValue,
         );
       });
 
