@@ -51,14 +51,10 @@ const searchSpotify: tool<{
       .min(0)
       .max(1000)
       .optional()
-      .describe(
-        'The index of the first result to return. Use with limit to get the next page of search results (0-1000)',
-      ),
+      .describe('The index of the first item to return. Defaults to 0'),
   },
   handler: async (args, extra: SpotifyHandlerExtra) => {
-    const { query, type, limit, offset } = args;
-    const limitValue = limit ?? 20;
-    const offsetValue = offset ?? 0;
+    const { query, type, limit = 20, offset = 0 } = args;
 
     try {
       const results = await handleSpotifyRequest(async (spotifyApi) => {
@@ -66,8 +62,8 @@ const searchSpotify: tool<{
           query,
           [type],
           undefined,
-          limitValue as MaxInt<50>,
-          offsetValue,
+          limit as MaxInt<50>,
+          offset,
         );
       });
 
@@ -253,6 +249,7 @@ const getUserPlaylists: tool<{
 const getPlaylistTracks: tool<{
   playlistId: z.ZodString;
   limit: z.ZodOptional<z.ZodNumber>;
+  offset: z.ZodOptional<z.ZodNumber>;
 }> = {
   name: 'getPlaylistTracks',
   description: 'Get a list of tracks in a Spotify playlist',
@@ -264,9 +261,15 @@ const getPlaylistTracks: tool<{
       .max(50)
       .optional()
       .describe('Maximum number of tracks to return (1-50)'),
+    offset: z
+      .number()
+      .min(0)
+      .max(1000)
+      .optional()
+      .describe('The index of the first item to return. Defaults to 0'),
   },
   handler: async (args, extra: SpotifyHandlerExtra) => {
-    const { playlistId, limit = 50 } = args;
+    const { playlistId, limit = 50, offset = 0 } = args;
 
     const playlistTracks = await handleSpotifyRequest(async (spotifyApi) => {
       return await spotifyApi.playlists.getPlaylistItems(
@@ -274,6 +277,7 @@ const getPlaylistTracks: tool<{
         undefined,
         undefined,
         limit as MaxInt<50>,
+        offset,
       );
     });
 
@@ -459,16 +463,17 @@ const getUserTopItems: tool<{
     offset: z
       .number()
       .optional()
-      .describe('The index of the first item to return. Defaults to 0.'),
+      .describe('The index of the first item to return. Defaults to 0'),
   },
   handler: async (args, extra: SpotifyHandlerExtra) => {
-    const { type, time_range, limit = 50 } = args;
+    const { type, time_range, limit = 50, offset = 0 } = args;
 
     const topItems = await handleSpotifyRequest(async (spotifyApi) => {
       return await spotifyApi.currentUser.topItems(
         type as 'artists' | 'tracks',
         time_range as 'short_term' | 'medium_term' | 'long_term',
         limit as MaxInt<50>,
+        offset,
       );
     });
 
