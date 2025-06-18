@@ -2,6 +2,8 @@ import { handleSpotifyRequest } from './utils.js';
 import { z } from 'zod';
 import type { SpotifyHandlerExtra, tool } from './types.js';
 
+// TODO: refactor repeated code into a utility function
+// TODO: optimize return messages to be less verbose as it fills model's context quickly
 const createPlaylist: tool<{
   name: z.ZodString;
   description: z.ZodOptional<z.ZodString>;
@@ -171,4 +173,71 @@ const addToQueue: tool<{
   },
 };
 
-export const writeTools = [addToQueue, addTracksToPlaylist, createPlaylist];
+const removeTracksFromPlaylist: tool<{
+  playlistId: z.ZodString;
+  trackIds: z.ZodArray<z.ZodString>;
+}> = {
+  name: 'removeTracksFromPlaylist',
+  description: 'Remove tracks from a Spotify playlist',
+  schema: {
+    playlistId: z.string().describe('The Spotify ID of the playlist'),
+    trackIds: z
+      .array(z.string())
+      .describe('Array of Spotify track IDs to remove'),
+  },
+  handler: async (args, extra: SpotifyHandlerExtra) => {
+    const { playlistId, trackIds } = args;
+
+    if (trackIds.length === 0) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: 'Error: No track IDs provided',
+          },
+        ],
+      };
+    }
+
+    try {
+      const tracks = trackIds.map((id) => ({
+        uri: `spotify:track:${id}`,
+      }));
+
+      await handleSpotifyRequest(async (spotifyApi) => {
+        await spotifyApi.playlists.removeItemsFromPlaylist(playlistId, {
+          tracks,
+        });
+      });
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Successfully removed ${trackIds.length} track${
+              trackIds.length === 1 ? '' : 's'
+            } from playlist (ID: ${playlistId})`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error removing tracks from playlist: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          },
+        ],
+      };
+    }
+  },
+};
+
+export const writeTools = [
+  addToQueue,
+  addTracksToPlaylist,
+  createPlaylist,
+  removeTracksFromPlaylist,
+];
