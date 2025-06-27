@@ -13,7 +13,9 @@
     "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
     "lint": "biome check . --write"
   },
-  "files": ["build"],
+  "files": [
+    "build"
+  ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
     "@spotify/web-api-ts-sdk": "^1.2.0",
@@ -22,7 +24,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
-    "@types/node": "^22.15.3",
+    "@types/node": "^22.15.33",
     "typescript": "^5.8.3"
   }
 }
